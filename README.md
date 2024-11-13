@@ -1,10 +1,11 @@
 
 # Video Frame Extractor
 
+# GStreamer Frame Extractor
+
 ## 📝 Overview
 
-A C program that leverages GStreamer to extract frames from video files, converting them into sequences of JPEG images with configurable parameters.
-
+A multi-threaded C program that uses GStreamer to extract frames from multiple video files simultaneously. The program creates a directories for all video then save the frame with video name and allows customization of frame extraction parameters.
 ## ✨ Features
 * Extract frames from any GStreamer-supported video format
 * Configurable frame rate (default: 5 fps)
@@ -44,92 +45,73 @@ sudo apt-get install libgstreamer-plugins-base1.0-dev
 ## 📖 Usage
 
 ### Basic Usage
-```bash
-./frame_extractor <video-file>
-```
 
-### Example
-```bash
-./frame_extractor input.mp4
+`./frame_extractor <video-file1> [video-file2] ... [options]`
+
+### Command Line Options
+
+|Option|Description|Default|
+|---|---|---|
+|`-r`|Frame rate (fps)|5|
+|`-w`|Output width|640|
+|`-h`|Output height|480|
+|`-q`|JPEG quality (0-100)|85|
+
+### Examples
+
+
+```
+# Process single video with default settings
+./frame_extractor video1.mp4
+
+# Process multiple videos with default settings
+./frame_extractor video1.mp4 video2.mp4 video3.mp4
+
+# Process videos with custom settings
+./frame_extractor *.mp4 -r 10 -w 1280 -h 720 -q 90
 ```
 
 ### Output Structure
 * Creates `vid_frame_img` directory in current working directory
 * Saves frames as JPEG images:
-  * `vid_frame_img/video_frame-0001.jpg`
-  * `vid_frame_img/video_frame-0002.jpg`
+* vid_frame_img/
+    |
+	├──  video1_frame-0001.jpg
+	├──  video2_frame-0002.jpg
+	└── ...
+	├──  video2_frame-0001.jpg
+	├──  video2_frame-0002.jpg
+	└── ...
   * etc.
 
 ## 🛠️ Technical Details
 
 ### GStreamer Pipeline
 ```bash
-filesrc ! decodebin ! videoconvert ! videoscale ! 
-video/x-raw,width=640,height=480 ! videorate ! 
-video/x-raw,framerate=5/1 ! jpegenc quality=85 ! multifilesink
+filesrc ! decodebin ! videoconvert ! videoscale ! video/x-raw,width=WIDTH,height=HEIGHT ! videorate ! video/x-raw,framerate=FPS/1 ! jpegenc quality=QUALITY ! multifilesink
 ```
 
-### Pipeline Components
-| Element | Purpose |
-|---------|----------|
-| `filesrc` | Reads input video file |
-| `decodebin` | Automatically decodes video |
-| `videoconvert` | Converts frames to suitable format |
-| `videoscale` | Resizes frames |
-| `videorate` | Adjusts frame rate |
-| `jpegenc` | Encodes frames as JPEG |
-| `multifilesink` | Saves individual frames |
 
-## ⚙️ Customization
+### Threading Model
 
-### Modifiable Parameters
-```c
-// Frame rate
-framerate=5/1              // Change '5' for different fps
+- One thread per video file
+- Concurrent processing using POSIX threads
+- Thread-safe resource management
+- Independent error handling per thread
 
-// Resolution
-width=640,height=480       // Modify dimensions
+## ⚙️ Performance Optimization
 
-// JPEG quality
-quality=85                 // Range: 0-100
+### Memory Usage
 
-// Output directory
-vid_frame_img              // Change directory name
+- Memory consumption scales with:
+    - Number of concurrent videos
+    - Output frame dimensions
+    - Frame rate
 
-// Output pattern
-location="vid_frame_img/%s_frame-%%04d.jpg"  // Modify pattern
-```
+### Recommended Limits
 
-## 🐛 Error Handling
+- Maximum concurrent videos: Dependent on system RAM and CPU cores
+- Suggested starting point: Number of CPU cores - 1
 
-The program handles several types of errors:
-* Invalid command-line arguments
-* Pipeline creation failures
-* Runtime errors
-* End-of-stream detection
-
-## ⚠️ Limitations
-* Single video processing only
-* Source code modification needed for parameter changes
-* No progress reporting
-* Empty output directory required
-
-## 🔍 Troubleshooting
-
-### Common Issues
-
-#### Compilation Errors
-* **Solution**: Verify library installation and GStreamer version
-
-#### Runtime Errors
-* **Check**:
-  * Input file existence
-  * Disk space
-  * Directory permissions
-
-#### No Frame Output
-* **Verify**:
-  * Video file validity
-  * Codec support in GStreamer
 
 *For more information, visit the [GStreamer documentation](https://gstreamer.freedesktop.org/documentation/).*
