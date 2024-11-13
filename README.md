@@ -74,7 +74,8 @@ sudo apt-get install libgstreamer-plugins-base1.0-dev
 ### Output Structure
 * Creates `vid_frame_img` directory in current working directory
 * Saves frames as JPEG images:
-* vid_frame_img/
+```
+vid_frame_img/
     |
 	├──  video1_frame-0001.jpg
 	├──  video2_frame-0002.jpg
@@ -82,8 +83,7 @@ sudo apt-get install libgstreamer-plugins-base1.0-dev
 	├──  video2_frame-0001.jpg
 	├──  video2_frame-0002.jpg
 	└── ...
-  * etc.
-
+```
 ## 🛠️ Technical Details
 
 ### GStreamer Pipeline
