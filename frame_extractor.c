@@ -5,13 +5,26 @@
 #include <libgen.h>
 #include <pthread.h>
 
+// Forward declaration of functions
+void get_filename_without_ext(const char* filepath, char* output);
+void create_directory(const char* path);
+
 typedef struct {
     char *filename;
     int frame_rate;
+    int quality;
+    gboolean keep_original_size;
     int width;
     int height;
-    int quality;
 } VideoProcessingParams;
+
+// Function to create directory if it doesn't exist
+void create_directory(const char* path) {
+    struct stat st = {0};
+    if (stat(path, &st) == -1) {
+        mkdir(path, 0777);
+    }
+}
 
 // Function to extract filename without extension
 void get_filename_without_ext(const char* filepath, char* output) {
@@ -26,7 +39,6 @@ void get_filename_without_ext(const char* filepath, char* output) {
     }
 }
 
-// Function to process single video
 void* process_video(void* params) {
     VideoProcessingParams* vpp = (VideoProcessingParams*)params;
     GstElement *pipeline;
@@ -34,24 +46,44 @@ void* process_video(void* params) {
     GstBus *bus;
     GstMessage *msg;
 
-    // Create output directory for this video
-    char dirname[512];
+    // Create base output directory
+    create_directory("vid_frame_img");
+
+    // Get video filename without extension
     char filename[256];
     get_filename_without_ext(vpp->filename, filename);
-    mkdir("vid_frame_img", 0777);
 
-    // Create pipeline string
+    // Create video-specific directory path
+    char video_dir[512];
+    snprintf(video_dir, sizeof(video_dir), "vid_frame_img/%s", filename);
+    create_directory(video_dir);
+
+    // Create pipeline string with updated output path
     char pipeline_str[1024];
-    snprintf(pipeline_str, sizeof(pipeline_str),
-        "filesrc location=\"%s\" ! "
-        "decodebin ! "
-        "videoconvert ! "
-        "videoscale ! video/x-raw,width=%d,height=%d ! "
-        "videorate ! video/x-raw,framerate=%d/1 ! "
-        "jpegenc quality=%d ! "
-        "multifilesink location=\"%s/%s_frame-%%04d.jpg\"",
-        vpp->filename, vpp->width, vpp->height, 
-        vpp->frame_rate, vpp->quality, "vid_frame_img",filename);
+    if (vpp->keep_original_size) {
+        // Pipeline without videoscale when keeping original dimensions
+        snprintf(pipeline_str, sizeof(pipeline_str),
+            "filesrc location=\"%s\" ! "
+            "decodebin ! "
+            "videoconvert ! "
+            "videorate ! video/x-raw,framerate=%d/1 ! "
+            "jpegenc quality=%d ! "
+            "multifilesink location=\"%s/frame-%%04d.jpg\"",
+            vpp->filename, vpp->frame_rate, vpp->quality, 
+            video_dir);
+    } else {
+        // Original pipeline with scaling
+        snprintf(pipeline_str, sizeof(pipeline_str),
+            "filesrc location=\"%s\" ! "
+            "decodebin ! "
+            "videoconvert ! "
+            "videoscale ! video/x-raw,width=%d,height=%d ! "
+            "videorate ! video/x-raw,framerate=%d/1 ! "
+            "jpegenc quality=%d ! "
+            "multifilesink location=\"%s/frame-%%04d.jpg\"",
+            vpp->filename, vpp->width, vpp->height, 
+            vpp->frame_rate, vpp->quality, video_dir);
+    }
 
     // Create pipeline
     pipeline = gst_parse_launch(pipeline_str, &error);
@@ -63,6 +95,7 @@ void* process_video(void* params) {
     }
 
     g_print("Processing %s...\n", vpp->filename);
+    g_print("Saving frames to: %s\n", video_dir);
 
     // Start playing
     gst_element_set_state(pipeline, GST_STATE_PLAYING);
@@ -111,8 +144,8 @@ int main(int argc, char *argv[]) {
         g_print("Usage: %s <video-file1> [video-file2] ... [options]\n", argv[0]);
         g_print("Options:\n");
         g_print("  -r <frame_rate>   Frame rate (default: 5)\n");
-        g_print("  -w <width>        Output width (default: 640)\n");
-        g_print("  -h <height>       Output height (default: 480)\n");
+        g_print("  -w <width>        Output width (default: original)\n");
+        g_print("  -h <height>       Output height (default: original)\n");
         g_print("  -q <quality>      JPEG quality 0-100 (default: 85)\n");
         return 1;
     }
@@ -122,8 +155,8 @@ int main(int argc, char *argv[]) {
 
     // Parse command line arguments
     int frame_rate = 5;
-    int width = 640;
-    int height = 480;
+    int width = -1;  // -1 indicates original size should be kept
+    int height = -1; // -1 indicates original size should be kept
     int quality = 85;
     int i;
 
@@ -161,9 +194,10 @@ int main(int argc, char *argv[]) {
             // Set up parameters for this video
             params[video_index].filename = argv[i];
             params[video_index].frame_rate = frame_rate;
+            params[video_index].quality = quality;
+            params[video_index].keep_original_size = (width == -1 || height == -1);
             params[video_index].width = width;
             params[video_index].height = height;
-            params[video_index].quality = quality;
 
             // Create thread for processing
             pthread_create(&threads[video_index], NULL, 

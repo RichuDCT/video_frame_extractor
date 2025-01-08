@@ -50,12 +50,12 @@ sudo apt-get install libgstreamer-plugins-base1.0-dev
 
 ### Command Line Options
 
-|Option|Description|Default|
-|---|---|---|
-|`-r`|Frame rate (fps)|5|
-|`-w`|Output width| input video width|
-|`-h`|Output height|input video hight|
-|`-q`|JPEG quality (0-100)|85|
+| Option | Description          | Default               |
+| ------ | -------------------- | --------------------- |
+| `-r`   | Frame rate (fps)     | 5                     |
+| `-w`   | Output width         | original video width  |
+| `-h`   | Output height        | original video  hight |
+| `-q`   | JPEG quality (0-100) | 85                    |
 
 ### Examples
 
@@ -75,22 +75,39 @@ sudo apt-get install libgstreamer-plugins-base1.0-dev
 * Creates `vid_frame_img` directory in current working directory
 * Saves frames as JPEG images:
 ```
-    vid_frame_img/
-    |
-	├──  video1_frame-0001.jpg
-	├──  video2_frame-0002.jpg
-	└── ...
-	├──  video2_frame-0001.jpg
-	├──  video2_frame-0002.jpg
-	└── ...
+vid_frame_img/
+├── video1/
+│   ├── frame-0001.jpg
+│   ├── frame-0002.jpg
+│   └── frame-0003.jpg ....
+├── video2/
+│   ├── frame-0001.jpg
+│   ├── frame-0002.jpg
+│   └── frame-0003.jpg ....
+....
 ```
 ## 🛠️ Technical Details
 
 ### GStreamer Pipeline
-```bash
-filesrc ! decodebin ! videoconvert ! videoscale ! video/x-raw,width=WIDTH,height=HEIGHT ! videorate ! video/x-raw,framerate=FPS/1 ! jpegenc quality=QUALITY ! multifilesink
+
+For original dimensions:
+
+``` bash
+`filesrc ! decodebin ! videoconvert ! videorate ! video/x-raw,framerate=FPS/1 ! jpegenc quality=QUALITY ! multifilesink`
 ```
 
+
+For custom dimensions:
+```bash
+`filesrc ! decodebin ! videoconvert ! videoscale ! video/x-raw,width=WIDTH,height=HEIGHT ! videorate ! video/x-raw,framerate=FPS/1 ! jpegenc quality=QUALITY ! multifilesink`
+```
+
+Key components:
+
+- Pipeline preserves original video dimensions by default
+- `videoscale` element is only used when custom dimensions are specified
+- Frame rate and JPEG quality can be customized through command-line options
+- Outputs to video-specific subdirectories for better organization
 
 ### Threading Model
 
