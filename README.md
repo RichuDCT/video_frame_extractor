@@ -53,8 +53,8 @@ sudo apt-get install libgstreamer-plugins-base1.0-dev
 |Option|Description|Default|
 |---|---|---|
 |`-r`|Frame rate (fps)|5|
-|`-w`|Output width|640|
-|`-h`|Output height|480|
+|`-w`|Output width| input video width|
+|`-h`|Output height|input video hight|
 |`-q`|JPEG quality (0-100)|85|
 
 ### Examples
