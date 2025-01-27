@@ -68,9 +68,9 @@ void* process_video(void* params) {
             "videoconvert ! "
             "videorate ! video/x-raw,framerate=%d/1 ! "
             "jpegenc quality=%d ! "
-            "multifilesink location=\"%s/frame-%%04d.jpg\"",
+            "multifilesink location=\"%s/%s_%%04d.jpg\"",
             vpp->filename, vpp->frame_rate, vpp->quality, 
-            video_dir);
+            video_dir,filename);
     } else {
         // Original pipeline with scaling
         snprintf(pipeline_str, sizeof(pipeline_str),
